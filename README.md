@@ -159,11 +159,21 @@ const osignal_pipe = osignal_new_pipe(root_1, d => d * 2)
 ```typescript
 const root = signal_new_value(0)
 
-const unlisten = signal_listen(root, root_output => {
-    console.log("effect", root_output)
+const unlisten = signal_listen({
+    target: root,
 
-    return () => {
-        console.log("cleanup", root_output)
+    // optional
+    config: {
+        // false by default
+        emit: true
+    },
+
+    listener: target => {
+        console.log("effect", target.output())
+
+        return () => {
+            console.log("cleanup", target.output())
+        }
     }
 })
 ```
