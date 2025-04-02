@@ -4,10 +4,15 @@
     "version": "1.0.0",
     "description": "Signal defenition and implementation",
     "keywords": ["signal"],
+    "homepage": "https://github.com/qlwt/signal-core#readme",
     "license": "MIT",
     "files": [
         "./build/**/*"
     ],
+    "repository": {
+        "type": "git",
+        "url": "github:qlwt/signal-core"
+    },
     "scripts": {
         "build": "run-s build:clear build:rollup",
         "build:clear": "rimraf ./build",
