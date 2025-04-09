@@ -1,7 +1,8 @@
 {
     "name": "@qyu/signal-core",
     "type": "module",
-    "version": "1.0.0",
+    "version": "1.0.1",
+    "main": "./build/bundle/entry/index.js",
     "description": "Signal defenition and implementation",
     "keywords": ["signal"],
     "homepage": "https://github.com/qlwt/signal-core#readme",
