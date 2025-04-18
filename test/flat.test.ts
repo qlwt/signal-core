@@ -1,3 +1,4 @@
+import { osignal_new_flat, osignal_new_pipe } from "#src/index.js"
 import { signal_new_flat } from "#src/signal/new/flat.js"
 import { signal_new_pipeo } from "#src/signal/new/pipeo.js"
 import { signal_new_value } from "#src/signal/new/value.js"
@@ -65,4 +66,43 @@ test("flat by outputs", () => {
     flatten.rmsub(flatten_sub)
 
     assert.deepStrictEqual(outputs, [1, 2, "c", "d", "e", undefined])
+})
+
+test("flat falsy", () => {
+    const outputs: unknown[] = []
+    const a = signal_new_value<0 | 1 | 2>(0)
+    const b = signal_new_value("a")
+    const c = osignal_new_pipe(a, a_o => {
+        switch (a_o) {
+            case 0: return b
+            case 1: return undefined
+            case 2: return null
+        }
+    })
+
+    const flatten = osignal_new_flat(c)
+
+    const flatten_sub = () => {
+        outputs.push(flatten.output())
+    }
+
+    flatten.addsub(flatten_sub)
+
+    flatten_sub()
+
+    b.input("b")
+
+    a.input(1)
+
+    b.input("c")
+
+    a.input(2)
+
+    b.input("d")
+
+    a.input(0)
+
+    b.input("e")
+
+    assert.deepStrictEqual(outputs, ["a", "b", undefined, null, "d", "e"])
 })

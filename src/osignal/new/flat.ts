@@ -13,7 +13,7 @@ export const osignal_new_flat = function <Src extends OSignal<OSignal<any> | und
                 return target.output()
             }
 
-            return undefined
+            return target
         },
 
         rmsub(sub) {
