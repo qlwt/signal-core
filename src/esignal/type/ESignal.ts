@@ -1,4 +1,4 @@
-import type { Signal_Sub, Signal_SubConfig } from "#src/type/Signal_Sub.js"
+import type { Signal_Sub, Signal_SubConfig } from "#src/type/signal/Sub.js"
 
 export interface ESignal {
     readonly rmsub: (sub: Signal_Sub) => void

@@ -55,7 +55,6 @@ root.input(20)
 root.rmsub(root_sub)
 ```
 
-
 ## Another common scenario is using esignal_new_manual
 
 ```typescript
@@ -65,11 +64,21 @@ esignal.addsub(() => {
     console.log("Event")
 })
 
-// prings Event
+// prints Event
 esignal_emit()
 ```
 
 ## Package also provides some utility functions to transform signals
+
+### Fallback for signal value
+
+```typescript
+// signal of number | null
+const root_1 = signal_new_value(Math.random() > 0.5 ? null : 0)
+
+// signal of number
+const signal_fallback = signal_new_fallback(root_1, () => 0)
+```
 
 ### Merge Signals
 
@@ -78,8 +87,10 @@ const root_1 = signal_new_value(0)
 const root_2 = signal_new_value(0)
 const root_3 = signal_new_value(0)
 
-// signal of [number, number, number]
-const signal_merged = signal_new_merge([root_1, root_2, root_3])
+// signal of [number, number, number, null, undefined]
+const signal_merged = signal_new_merge([root_1, root_2, root_3, null, undefined] as const)
+// signal of [number, "HELLOWORLD"]
+const signal_merged_pick = signal_new_merge_pick([{ pick: true, value: root_1 }, { pick: false, value: "HELLO WORLD" }] as const)
 ```
 
 ### Merge Map of Signals
@@ -89,8 +100,25 @@ const root_1 = signal_new_value(0)
 const root_2 = signal_new_value(0)
 const root_3 = signal_new_value(0)
 
-// signal of { root_1: number, root_2: number, root_3: number }
-const signal_mergedmap = signal_new_mergemap({ root_1, root_2, root_3 })
+// signal of { root_1: number, root_2: number, root_3: number, root_4: null, root_5: undefined }
+const signal_mergedmap = signal_new_mergemap({
+    root_1,
+    root_2,
+    root_3,
+    root_4: null,
+    root_5: undefined 
+})
+// signal of { root_1: number, root_2: "HELLOWORLD" }
+const signal_mergedmap = signal_new_mergemap({
+    root_1: {
+        pick: true,
+        value: root_1 
+    },
+    root_2: {
+        pick: false,
+        value: "HELLOWORLD" 
+    } 
+})
 ```
 
 ### Transform Signal
@@ -130,8 +158,24 @@ const signal_opipe = signal_new_pipeo(root_1, d => {
     return root_2
 })
 
+const signal_opipe_pick = signal_new_pipeo(root_1, d => {
+    if (d > 100) {
+        return {
+            pick: false,
+            value: "HELLOWORLD"
+        }
+    }
+
+    return {
+        pick: true,
+        value: root_2
+    }
+})
+
 // signal of number or undefined, will update based on current target, input will be redirected to current target
 const signal_flat = signal_new_flat(signal_opipe)
+// this one will be signal of number | "HELLOWORLD"
+const signal_flat_pick = signal_new_flat_pick(signal_opipe_pick)
 ```
 
 ### Prevent unnecessary updates

@@ -1,5 +1,5 @@
 import type { ESignal } from "#src/esignal/type/ESignal.js";
-import type { Signal_Sub, Signal_SubConfig } from "#src/type/Signal_Sub.js";
+import type { Signal_Sub, Signal_SubConfig } from "#src/type/signal/Sub.js";
 
 export type Signal_Listen_Sub<Target extends ESignal> = {
     (target: Target): VoidFunction | void | undefined

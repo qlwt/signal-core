@@ -1,10 +1,13 @@
 import { osignal_new_merge } from "#src/osignal/new/merge.js";
 import type { Signal } from "#src/signal/type/Signal.js";
-import type { SignalMerge_IValue, SignalMerge_OValue } from "#src/type/SignalMerge_Values.js";
+import type { SignalMerge_IValue, SignalMerge_OValue } from "#src/type/signal/merge/Values.js";
 
-export const signal_new_merge = function <Src extends readonly Signal<any, any>[]>(
-    src: Src
-): Signal<SignalMerge_IValue<Src>, SignalMerge_OValue<Src>> {
+type Src_Generic = readonly (Signal | undefined | null)[]
+
+type IValue<Src extends Src_Generic> = SignalMerge_IValue<Src>
+type OValue<Src extends Src_Generic> = SignalMerge_OValue<Src>
+
+export const signal_new_merge = function <Src extends Src_Generic>(src: Src): Signal<IValue<Src>, OValue<Src>> {
     const osignal = osignal_new_merge(src)
 
     return {

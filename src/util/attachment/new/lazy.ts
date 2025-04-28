@@ -1,4 +1,4 @@
-import type { Signal_Sub, Signal_SubConfig } from "#src/type/Signal_Sub.js"
+import type { Signal_Sub, Signal_SubConfig } from "#src/type/signal/Sub.js"
 import { emitter_new } from "#src/util/emitter/new/index.js"
 
 export type AttachmentLazy = {

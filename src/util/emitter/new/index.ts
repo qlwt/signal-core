@@ -1,5 +1,5 @@
 import { signal_sub_emit } from "#src/signal/sub/emit.js";
-import type { Signal_Sub, Signal_SubConfig } from "#src/type/Signal_Sub.js";
+import type { Signal_Sub, Signal_SubConfig } from "#src/type/signal/Sub.js";
 
 export type Emitter = {
     readonly emit: () => void

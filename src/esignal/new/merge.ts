@@ -1,5 +1,5 @@
 import type { ESignal } from "#src/esignal/type/ESignal.js";
-import type { Signal_Sub } from "#src/type/Signal_Sub.js";
+import type { Signal_Sub } from "#src/type/signal/Sub.js";
 import { attachment_new_lazy } from "#src/util/attachment/new/lazy.js";
 
 export const esignal_new_merge = (src: readonly ESignal[]): ESignal => {

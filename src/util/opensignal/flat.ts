@@ -1,65 +1,74 @@
 import type { ESignal } from "#src/esignal/type/ESignal.js";
 import type { OSignal } from "#src/osignal/type/OSignal.js";
-import type { Signal_Sub, Signal_SubConfig } from "#src/type/Signal_Sub.js";
-import type { Signal_InferO } from "#src/type/Signal_ValueInfer.js";
+import type { PickWrapperExpected } from "#src/type/PickWrapper.js";
+import type { Signal_Sub, Signal_SubConfig } from "#src/type/signal/Sub.js";
+import type { Signal_InferO } from "#src/type/signal/Infer.js";
 import { attachment_new_lazy } from "#src/util/attachment/new/lazy.js";
 
-export type OpenSignalFlat<Src extends OSignal<ESignal | undefined | null>> = {
+type Src_Generic = OSignal<PickWrapperExpected<ESignal>>
+
+export type OpenSignalFlat<Src extends Src_Generic> = {
+    target(): Signal_InferO<Src>
     rmsub(sub: Signal_Sub): void
     addsub(sub: Signal_Sub, config?: Signal_SubConfig): void
-    target(): Signal_InferO<Src>
 }
 
-type Target<Src extends OSignal<ESignal | undefined | null>> = (
+type State<Src extends Src_Generic> = (
     | {
         readonly active: true
-        readonly value: Signal_InferO<Src>
+        readonly target: Signal_InferO<Src>
     }
     | {
         readonly active: false
     }
 )
 
-export const opensignal_flat = function <Src extends OSignal<ESignal | undefined | null>>(src: Src): OpenSignalFlat<Src> {
-    let target: Target<Src> = { active: false }
+export const opensignal_flat = function <Src extends Src_Generic>(src: Src): OpenSignalFlat<Src> {
+    let state: State<Src> = { active: false }
 
     const attachment = attachment_new_lazy(
         () => {
-            const newtarget = src.output() as Signal_InferO<Src>
+            const next_target = src.output()
 
-            target = { active: true, value: newtarget }
+            state = {
+                active: true,
+                target: next_target as Signal_InferO<Src>
+            }
 
             src.addsub(src_sub, { instant: true })
 
-            if (newtarget) {
-                newtarget.addsub(target_sub, { instant: true })
+            if (next_target.pick) {
+                next_target.value.addsub(target_sub, { instant: true })
             }
         },
         () => {
-            const oldtarget = target
+            const now_state = state
 
-            target = { active: false }
+            state = { active: false }
 
             src.rmsub(src_sub)
 
-            if (oldtarget.active && oldtarget.value) {
-                oldtarget.value.rmsub(target_sub)
+            if (now_state.active && now_state.target.pick) {
+                now_state.target.value.rmsub(target_sub)
             }
         }
     )
 
     const src_sub: Signal_Sub = () => {
-        const oldtarget = target
-        const newtarget = src.output() as Signal_InferO<Src>
+        const now_state = state
+        const next_target = src.output()
 
-        target = { active: true, value: newtarget }
-
-        if (oldtarget.active && oldtarget.value) {
-            oldtarget.value.rmsub(target_sub)
+        state = {
+            active: true,
+            target: next_target as Signal_InferO<Src>
         }
 
-        if (newtarget) {
-            newtarget.addsub(target_sub, { instant: true })
+        if (now_state.active && now_state.target.pick) {
+            now_state.target.value.rmsub(target_sub)
+        }
+
+        if (next_target.pick) {
+            next_target.value.addsub(target_sub, { instant: true })
         }
 
         target_sub()
@@ -71,8 +80,8 @@ export const opensignal_flat = function <Src extends OSignal<ESignal | undefined
 
     return {
         target() {
-            if (target.active) {
-                return target.value
+            if (state.active) {
+                return state.target
             }
 
             return src.output() as Signal_InferO<Src>

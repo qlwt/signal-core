@@ -1,6 +1,6 @@
 import type { Signal } from "#src/signal/type/Signal.js";
-import type { Signal_Sub } from "#src/type/Signal_Sub.js";
-import type { SignalPipe_ITransformer, SignalPipe_OTransformer } from "#src/type/SignalPipe_Transformers.js";
+import type { Signal_Sub } from "#src/type/signal/Sub.js";
+import type { SignalPipe_ITransformer, SignalPipe_OTransformer } from "#src/type/signal/pipe/Transformers.js";
 import { attachment_new_lazy } from "#src/util/attachment/new/lazy.js";
 
 export const signal_new_pipe = function <I, O, IT, OT>(

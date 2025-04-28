@@ -1,38 +1,26 @@
+import { osignal_new_pipe } from "#src/osignal/new/pipe.js"
 import type { OSignal } from "#src/osignal/type/OSignal.js"
+import { signal_new_flat_pick } from "#src/signal/new/flat_pick.js"
 import type { Signal } from "#src/signal/type/Signal.js"
-import type { SignalFlat_IValue, SignalFlat_OValue } from "#src/type/SignalFlat_Values.js"
-import { opensignal_flat } from "#src/util/opensignal/flat.js"
+import type { SignalFlat_IValue, SignalFlat_OValue } from "#src/type/signal/flat/Values.js"
 
-export const signal_new_flat = function <Src extends OSignal<Signal<any, any> | undefined | null>>(
-    src: Src
-): Signal<SignalFlat_IValue<Src>, SignalFlat_OValue<Src>> {
-    const opensignal = opensignal_flat(src)
+type Src_Generic = OSignal<Signal | undefined | null>
 
-    return {
-        input(value) {
-            const target = opensignal.target()
+type IValue<Src extends Src_Generic> = SignalFlat_IValue<Src>
+type OValue<Src extends Src_Generic> = SignalFlat_OValue<Src>
 
-            if (target) {
-                target.input(value)
+export const signal_new_flat = function <Src extends Src_Generic>(src: Src): Signal<IValue<Src>, OValue<Src>> {
+    return signal_new_flat_pick(osignal_new_pipe(src, src_o => {
+        if (src_o) {
+            return {
+                pick: true,
+                value: src_o
             }
-        },
-
-        output() {
-            const target = opensignal.target()
-
-            if (target) {
-                return target.output()
-            }
-
-            return undefined as SignalFlat_OValue<Src>
-        },
-
-        rmsub(sub) {
-            opensignal.rmsub(sub)
-        },
-
-        addsub(sub, config) {
-            opensignal.addsub(sub, config)
         }
-    }
+
+        return {
+            pick: false,
+            value: src_o
+        }
+    }))
 }
