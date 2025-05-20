@@ -11,7 +11,7 @@ export const osignal_new_memo = <T>(src: OSignal<T>, eq: Comparator<T> = Object.
     const src_sub = () => {
         const src_o = src.output()
 
-        if (!eq(cache, src.output())) {
+        if (!eq(cache, src_o)) {
             cache = src_o
 
             attachment.emit()
@@ -20,9 +20,9 @@ export const osignal_new_memo = <T>(src: OSignal<T>, eq: Comparator<T> = Object.
 
     const attachment = attachment_new_lazy(
         () => {
-            cache = src.output()
-
             src.addsub(src_sub, { instant: true })
+
+            cache = src.output()
         },
         () => {
             src.rmsub(src_sub)
