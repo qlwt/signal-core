@@ -178,6 +178,24 @@ const signal_flat = signal_new_flat(signal_opipe)
 const signal_flat_pick = signal_new_flat_pick(signal_opipe_pick)
 ```
 
+### List pipe that only updates values that have changed
+
+```typescript
+const root = signal_new_value([0, 1, 2, 3])
+
+const signal_listpipe = signal_new_listpipe(root, n => ({ value: n }))
+
+const transformed_head_before = signal_listpipe.output()[0]!
+
+signal_listpipe.input([0, 1, 2, 3, 4])
+
+const transformed_head_after = signal_listpipe.output()[0]!
+
+// transformer function will only be called for new unique members (in this case 4), old ones will be reused from cache
+// true
+console.log(transformed_head_before === transformed_head_after)
+```
+
 ### Prevent unnecessary updates
 
 ```typescript
