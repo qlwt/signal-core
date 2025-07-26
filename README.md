@@ -311,6 +311,31 @@ const osignal_new_special = function <O>(src: OSignal<O>): OSignal<O> {
 }
 ```
 
+### Also some debug api is exposed to test things
+
+```typescript
+const root = signal_new_value()
+
+// will print on actions, has some additional functions that expose internal state
+const debug = signal_new_debug(root, {
+    // will be shown at console
+    name: "root:debug",
+
+    print: {
+        // print state with actions
+        state: true,
+        // print on action unless marked as false
+        actions_fallback: true,
+
+        // print on action
+        actions: {
+            input: false,
+            output: false,
+        },
+    }
+})
+```
+
 ## Updates are batched to prevent unnecessary calls
 
 ```typescript
