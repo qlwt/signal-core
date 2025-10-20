@@ -44,5 +44,7 @@ export const osignal_new_listpipe = function <Src extends Src_Generic, R>(
                 results.push(result)
             }
         }
+
+        return results
     })
 }
