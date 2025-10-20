@@ -5,7 +5,7 @@ import type { SignalListPipe_RawItem, SignalListPipe_Output } from "#src/type/si
 type Src_Generic = OSignal<(
     | null
     | undefined
-    | readonly any[]
+    | Iterable<any>
 )>
 
 export const osignal_new_listpipe = function <Src extends Src_Generic, R>(
@@ -29,18 +29,20 @@ export const osignal_new_listpipe = function <Src extends Src_Generic, R>(
             }
         }
 
-        return src_o.map(item => {
+        const results = new Array<R>()
+
+        for (const item of src_o) {
             if (cache.has(item)) {
                 const result = cache.get(item)!
 
-                return result
+                results.push(result)
             } else {
                 const result = mapper(item)
 
                 cache.set(item, result)
 
-                return result
+                results.push(result)
             }
-        })
+        }
     })
 }
