@@ -106,3 +106,39 @@ test("flat falsy", () => {
 
     assert.deepStrictEqual(outputs, ["a", "b", undefined, null, "d", "e"])
 })
+
+test("flat sameinput", () => {
+    const expect: unknown[] = []
+    const outputs: unknown[] = []
+    const a = signal_new_value<0 | 1 | 2>(0)
+    const b = signal_new_value("a")
+    const c = osignal_new_pipe(a, a_o => {
+        switch (a_o) {
+            case 0: return b
+            case 1: return b
+            case 2: return b
+        }
+    })
+
+    const flatten = osignal_new_flat(c)
+
+    const flatten_sub = () => {
+        outputs.push(flatten.output())
+    }
+
+    flatten.addsub(flatten_sub)
+
+    flatten_sub()
+    expect.push("a")
+
+    b.input("b")
+    expect.push("b")
+
+    a.input(1)
+    expect.push("b")
+
+    b.input("c")
+    expect.push("c")
+
+    assert.deepStrictEqual(outputs, expect)
+})

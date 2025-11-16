@@ -63,13 +63,14 @@ export const opensignal_flat = function <Src extends Src_Generic>(src: Src): Ope
             target: next_target as Signal_InferO<Src>
         }
 
+        if (now_state.active && now_state.target.pick) {
+            now_state.target.value.rmsub(target_sub)
+        }
+
         if (next_target.pick) {
             next_target.value.addsub(target_sub, { instant: true })
         }
 
-        if (now_state.active && now_state.target.pick) {
-            now_state.target.value.rmsub(target_sub)
-        }
 
         target_sub()
     }
