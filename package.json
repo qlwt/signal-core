@@ -1,7 +1,7 @@
 {
     "name": "@qyu/signal-core",
     "type": "module",
-    "version": "1.3.1",
+    "version": "1.3.2",
     "main": "./build/bundle/entry/index.js",
     "description": "Signal defenition and implementation",
     "keywords": ["signal"],
