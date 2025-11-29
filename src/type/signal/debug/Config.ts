@@ -1,53 +1,53 @@
-export type SignalDebug_EConfig = Readonly<{
-    name: string
+export type SignalDebug_EConfig = {
+    readonly name: string
 
-    print?: Readonly<{
-        state?: boolean
-        actions_fallback?: boolean
+    readonly print?: {
+        readonly state?: boolean
+        readonly actions_fallback?: boolean
 
-        actions?: Readonly<{
-            emit?: boolean
-            rmsub?: boolean
-            addsub?: boolean
-            attach?: boolean
-            detach?: boolean
-        }>
-    }>
-}>
+        readonly actions?: {
+            readonly emit?: boolean
+            readonly rmsub?: boolean
+            readonly addsub?: boolean
+            readonly attach?: boolean
+            readonly detach?: boolean
+        }
+    }
+}
 
 export type SignalDebug_OConfig = Readonly<{
-    name: string
+    readonly name: string
 
-    print?: Readonly<{
-        state?: boolean
-        actions_fallback?: boolean
+    readonly print?: Readonly<{
+        readonly state?: boolean
+        readonly actions_fallback?: boolean
 
-        actions?: Readonly<{
-            emit?: boolean
-            rmsub?: boolean
-            addsub?: boolean
-            attach?: boolean
-            detach?: boolean
-            output?: boolean
+        readonly actions?: Readonly<{
+            readonly emit?: boolean
+            readonly rmsub?: boolean
+            readonly addsub?: boolean
+            readonly attach?: boolean
+            readonly detach?: boolean
+            readonly output?: boolean
         }>
     }>
 }>
 
 export type SignalDebug_Config = Readonly<{
-    name: string
+    readonly name: string
 
-    print?: Readonly<{
-        state?: boolean
-        actions_fallback?: boolean
+    readonly print?: Readonly<{
+        readonly state?: boolean
+        readonly actions_fallback?: boolean
 
-        actions?: Readonly<{
-            emit?: boolean
-            rmsub?: boolean
-            addsub?: boolean
-            attach?: boolean
-            detach?: boolean
-            input?: boolean
-            output?: boolean
+        readonly actions?: Readonly<{
+            readonly emit?: boolean
+            readonly rmsub?: boolean
+            readonly addsub?: boolean
+            readonly attach?: boolean
+            readonly detach?: boolean
+            readonly input?: boolean
+            readonly output?: boolean
         }>
     }>
 }>

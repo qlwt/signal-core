@@ -1,18 +1,18 @@
-export type SignalDebug_EState = Readonly<{
-    time: Date
-    attached: boolean
-}>
+export type SignalDebug_EState = {
+    readonly time: Date
+    readonly attached: boolean
+}
 
 export type SignalDebug_OState<O> = Readonly<{
-    output: O
-    time: Date
-    attached: boolean
+    readonly output: O
+    readonly time: Date
+    readonly attached: boolean
 }>
 
-export type SignalDebug_State<I, O> = Readonly<{
-    input?: I
+export type SignalDebug_State<I, O> = {
+    readonly input?: I
 
-    output: O
-    time: Date
-    attached: boolean
-}>
+    readonly output: O
+    readonly time: Date
+    readonly attached: boolean
+}
