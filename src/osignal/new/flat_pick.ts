@@ -9,6 +9,10 @@ export const osignal_new_flat_pick = function <Src extends Src_Generic>(src: Src
     const opensignal = opensignal_flat(src)
 
     return {
+        rmsub: opensignal.rmsub,
+        addsub: opensignal.addsub,
+        id: opensignal.identity,
+
         output() {
             const target = opensignal.target()
 
@@ -18,13 +22,5 @@ export const osignal_new_flat_pick = function <Src extends Src_Generic>(src: Src
 
             return target.value
         },
-
-        rmsub(sub) {
-            opensignal.rmsub(sub)
-        },
-
-        addsub(sub, config) {
-            opensignal.addsub(sub, config)
-        }
     }
 }

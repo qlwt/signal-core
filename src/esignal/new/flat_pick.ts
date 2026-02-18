@@ -7,12 +7,8 @@ export const esignal_new_flat_pick = (src: OSignal<PickWrapperExpected<ESignal>>
     const opensignal = opensignal_flat(src)
 
     return {
-        rmsub(sub) {
-            opensignal.rmsub(sub)
-        },
-
-        addsub(sub, config) {
-            opensignal.addsub(sub, config)
-        }
+        rmsub: opensignal.rmsub,
+        addsub: opensignal.addsub,
+        id: opensignal.identity,
     }
 }

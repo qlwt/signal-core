@@ -9,13 +9,7 @@ export const osignal_new_mergemap_pick = function <Src extends Src_Generic>(src:
     const esignal = esignal_new_merge(Object.values(src).filter(src_value => src_value.pick).map(src_value => src_value.value))
 
     return {
-        rmsub(sub) {
-            esignal.rmsub(sub)
-        },
-
-        addsub(sub, config) {
-            esignal.addsub(sub, config)
-        },
+        ...esignal,
 
         output() {
             const ovalue = {} as SignalMergeMapPick_OValue<Src>

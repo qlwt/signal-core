@@ -8,13 +8,7 @@ export const osignal_new_merge = function <Src extends Src_Generic>(src: Src): O
     const esignal = esignal_new_merge(src.filter(src_value => !!src_value))
 
     return {
-        addsub(sub, config) {
-            esignal.addsub(sub, config)
-        },
-
-        rmsub(sub) {
-            esignal.rmsub(sub)
-        },
+        ...esignal,
 
         output() {
             return src.map(src_value => {

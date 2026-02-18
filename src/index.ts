@@ -15,9 +15,7 @@ export * from "#src/type/signal/debug/Config.js"
 export * from "#src/type/signal/debug/State.js"
 
 export * from "#src/util/emitter/new/index.js"
-export * from "#src/util/emitter/new/debug.js"
 export * from "#src/util/attachment/new/lazy.js"
-export * from "#src/util/attachment/new/lazy_debug.js"
 
 export * from "#src/signal/type/Signal.js"
 export * from "#src/signal/listen.js"

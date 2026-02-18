@@ -11,17 +11,7 @@ export const signal_new_mergemap = function <Src extends Src_Generic>(src: Src):
     const osignal = osignal_new_mergemap(src)
 
     return {
-        rmsub(sub) {
-            osignal.rmsub(sub)
-        },
-
-        addsub(sub, config) {
-            osignal.addsub(sub, config)
-        },
-
-        output() {
-            return osignal.output()
-        },
+        ...osignal,
 
         input(message) {
             for (const [key, key_value] of Object.entries(message)) {

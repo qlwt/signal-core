@@ -12,17 +12,7 @@ export const signal_new_mergemap_pick = function <Src extends Src_Generic>(src: 
     const osignal = osignal_new_mergemap_pick(src)
 
     return {
-        rmsub(sub) {
-            osignal.rmsub(sub)
-        },
-
-        addsub(sub, config) {
-            osignal.addsub(sub, config)
-        },
-
-        output() {
-            return osignal.output()
-        },
+        ...osignal,
 
         input(message) {
             for (const [key, key_value] of Object.entries(message)) {

@@ -11,9 +11,7 @@ export const signal_new_merge = function <Src extends Src_Generic>(src: Src): Si
     const osignal = osignal_new_merge(src)
 
     return {
-        output() {
-            return osignal.output()
-        },
+        ...osignal,
 
         input(values) {
             values.forEach((value, index) => {
@@ -24,13 +22,5 @@ export const signal_new_merge = function <Src extends Src_Generic>(src: Src): Si
                 }
             })
         },
-
-        rmsub(sub) {
-            osignal.rmsub(sub)
-        },
-
-        addsub(sub, config) {
-            osignal.addsub(sub, config)
-        }
     }
 }

@@ -13,9 +13,7 @@ export const signal_new_listpipe = function <Src extends Src_Generic, R>(
     return {
         ...osignal,
 
-        input: message => {
-            src.input(message)
-        }
+        input: src.input.bind(src),
     }
 }
 

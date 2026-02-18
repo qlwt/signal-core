@@ -1,8 +1,8 @@
-import { osignal_new_flat, osignal_new_pipe } from "#src/index.js"
+import { osignal_new_flat, osignal_new_merge, osignal_new_pipe } from "#src/index.js"
 import { signal_new_flat } from "#src/signal/new/flat.js"
 import { signal_new_pipeo } from "#src/signal/new/pipeo.js"
 import { signal_new_value } from "#src/signal/new/value.js"
-import { test, assert } from "vitest"
+import { assert, test } from "vitest"
 
 enum RootSwitch {
     Number,
@@ -139,6 +139,57 @@ test("flat sameinput", () => {
 
     b.input("c")
     expect.push("c")
+
+    assert.deepStrictEqual(outputs, expect)
+})
+
+test("flat batch", () => {
+    const expect: unknown[] = []
+    const outputs: unknown[] = []
+
+    const root = signal_new_value<0 | 1>(0)
+    const root_1 = signal_new_value("a: 0")
+    const root_2 = signal_new_value("b: 0")
+    const root_3 = signal_new_value("c: 0")
+    const root_4 = signal_new_value("d: 0")
+
+    const flat_1 = osignal_new_flat(osignal_new_pipe(root, a_o => {
+        switch (a_o) {
+            case 0:
+                return osignal_new_merge([root_1, root_2] as const)
+            case 1:
+                return osignal_new_merge([root_3, root_4] as const)
+        }
+    }))
+
+    const flat_2 = osignal_new_flat(osignal_new_pipe(root, a_o => {
+        switch (a_o) {
+            case 0:
+                return osignal_new_merge([root_3, root_4] as const)
+            case 1:
+                return osignal_new_merge([root_1, root_2] as const)
+        }
+    }))
+
+    const flat = osignal_new_merge([flat_1, flat_2] as const)
+
+    const flatten_sub = () => {
+        outputs.push(flat.output())
+    }
+
+    flat.addsub(flatten_sub)
+
+    flatten_sub()
+    expect.push([[`a: 0`, `b: 0`], [`c: 0`, `d: 0`]])
+
+    root_1.input("a: 1")
+    expect.push([[`a: 1`, `b: 0`], [`c: 0`, `d: 0`]])
+
+    root.input(1)
+    expect.push([[`c: 0`, `d: 0`], [`a: 1`, `b: 0`]])
+
+    root_3.input("c: 1")
+    expect.push([[`c: 1`, `d: 0`], [`a: 1`, `b: 0`]])
 
     assert.deepStrictEqual(outputs, expect)
 })

@@ -1,32 +1,58 @@
 import type { ESignal } from "#src/esignal/type/ESignal.js";
-import type { Signal_Sub } from "#src/type/signal/Sub.js";
-import { attachment_new_lazy } from "#src/util/attachment/new/lazy.js";
+
+type Cache = {
+    id: Symbol
+    src_ids: Symbol[]
+}
 
 export const esignal_new_merge = (src: readonly ESignal[]): ESignal => {
-    const src_sub: Signal_Sub = () => {
-        attachment.emit()
+    let cache: Cache | null = null
+
+    const cache_get = (): Cache => {
+        if (cache) {
+            let now_ids = new Array<Symbol>(src.length)
+
+            for (let i = 0; i < src.length; ++i) {
+                const src_id = src[i]!.id()
+
+                now_ids[i] = src_id
+
+                if (src_id !== cache.src_ids[i]!) {
+                    for (let j = i + 1; j < src.length; ++j) {
+                        now_ids[j] = src[j]!.id()
+                    }
+
+                    cache = {
+                        id: Symbol(),
+                        src_ids: now_ids,
+                    }
+                }
+            }
+        } else {
+            cache = {
+                id: Symbol(),
+                src_ids: src.map(src_node => src_node.id()),
+            }
+        }
+
+        return cache
     }
 
-    const attachment = attachment_new_lazy(
-        () => {
-            src.forEach(src => {
-                src.addsub(src_sub, { instant: true })
-            })
-        },
-        () => {
-            src.forEach(src => {
-                src.rmsub(src_sub)
-            })
-        }
-    )
-
     return {
+        id: () => {
+            return cache_get().id
+        },
+
         addsub(sub, config) {
-            attachment.addsub(sub, config)
+            for (const src_node of src) {
+                src_node.addsub(sub, config)
+            }
         },
 
         rmsub(sub) {
-            attachment.rmsub(sub)
+            for (const src_node of src) {
+                src_node.rmsub(sub)
+            }
         }
     }
 }

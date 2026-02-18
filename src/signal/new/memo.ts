@@ -5,24 +5,12 @@ type Comparator<T> = {
     (a: T, b: T): boolean
 }
 
-export const signal_new_memo = function <I, O>(src: Signal<I, O>, eq: Comparator<O> = Object.is): Signal<I, O> {
+export const signal_new_memo = function <I, O>(src: Signal<I, O>, eq: Comparator<O> | null = null): Signal<I, O> {
     const osignal = osignal_new_memo(src, eq)
 
     return {
-        input(message) {
-            src.input(message)
-        },
+        ...osignal,
 
-        output() {
-            return osignal.output()
-        },
-
-        rmsub(sub) {
-            osignal.rmsub(sub)
-        },
-
-        addsub(sub, config) {
-            osignal.addsub(sub, config)
-        },
+        input: src.input.bind(src),
     }
 }

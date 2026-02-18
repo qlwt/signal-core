@@ -13,11 +13,17 @@ Package defines three types of signals:
 type Signal_Sub = VoidFunction
 
 type Signal_SubConfig = {
-    // will ignore batching
-    instant?: boolean
+    // default is 0
+    // execution order of subs in a batcher
+    // if false - executes instantely
+    order?: number | false
+    // called before the execution of a sub to determain wether it should be executed
+    blocked_new?: () => boolean
 }
 
 interface ESignal {
+    // id of a signal, expected to change every time the value changes
+    id(): Symbol
     // remove subscriber from signal
     rmsub(sub: Signal_Sub): void
     // add subscriber to signal
@@ -202,7 +208,25 @@ console.log(transformed_head_before === transformed_head_after)
 const root_1 = signal_new_value(0)
 
 // do not update if value is the same as it was
+// comparator is optional, if not provided - will update every time source is changed
+// memo without comparator is useful when you just want to stabilise the value
 const signal_memoed = signal_new_memo(root_1, Object.is)
+
+// normally would always provide diferent object
+const piped = osignal_new_pipe(root_1, value => {
+    return {
+        value
+    }
+})
+
+// usage of memo without comparator
+// will still trigger every time root_1 changes, but will return stable output between changes
+const piped_memoed = osignal_new_memo(piped)
+
+// false
+console.log(piped.output() === piped.output())
+// true
+console.log(piped_memoed.output() === piped_memoed.output())
 ```
 
 ### Osignal and ESignal also have their own transformers
@@ -248,25 +272,61 @@ const unlisten = signal_listen({
 const emitter = emitter_new()
 // will attach with provided function when there are subs listening
 // will deattach when there is none
-const attachment = attachment_new_lazy(
-    () => {
-        console.log("Attachment activation")
-    },
-    () => {
-        console.log("Attachment cleanup")
+const attachment = attachment_new_lazy({
+    connection_new: (order) => {
+        let id: number | null = null
+
+        const emit = () => {
+            emitter.emit(order)
+        }
+
+        return {
+            attach: () => {
+                console.log("Attachment activation")
+
+                id = setInterval(() => {
+                    signal_sub_emit(emit, { order: false })
+                }, 1000)
+            },
+            detach: () => {
+                console.log("Attachment cleanup")
+
+                if (id !== null) {
+                    cancelInterval(id)
+                }
+            }
+        }
     }
-)
+})
 
 interface Emitter {
-    emit(): void
-    submap(): Map<Signal_Sub, Signal_SubConfig>
-    rmsub(sub: Signal_Sub): void
-    addsub(sub: Signal_Sub, config?: Signal_SubConfig): void
+    emit_all(): void
+    emit(order: Signal_SubConfig_Order): void
+
+    // index of subs to the order
+    idxmap(): Map<Signal_Sub, Signal_SubConfig_Order>
+    // index of order to the index of subs
+    ordermap(): Map<Signal_SubConfig_Order, Map<Signal_Sub, Signal_SubConfig>>
+
+    // returns order if it have been emptied (should detach)
+    rmsub(sub: Signal_Sub): Signal_SubConfig_Order | null
+    // returns order if it have been created (should attach)
+    addsub(sub: Signal_Sub, config?: Signal_SubConfig): Signal_SubConfig_Order | null
 }
 
-interface Attachment {
-    emit(): void
-    active(): boolean
+interface AttachmentLazy {
+    emit_all(): void
+    emit(order: Signal_SubConfig_Order): void
+
+    conmap(): Map<Signal_SubConfig_Order, AttachmentLazy_Connection>
+
+    // get if any of the orders active
+    active_any(): boolean
+    // get if attachment of given order is active
+    active(order: Signal_SubConfig_Order): boolean
+    // get list of all currently attached orders
+    active_list(): Signal_SubConfig_Order[] 
+
     rmsub(sub: Signal_Sub): void
     addsub(sub: Signal_Sub, config?: Signal_SubConfig): void
 }
@@ -275,38 +335,40 @@ interface Attachment {
 ```typescript
 // special signal that adds lazy sub to source
 const osignal_new_special = function <O>(src: OSignal<O>): OSignal<O> {
-    const src_sub = () => {
-        attachment.emit()
-    }
-
     const src_lazysub = () => {
         console.log("lazysub")
     }
 
-    const attachment = attachment_new_lazy(
-        () => {
-            // instant: true to prevent batching. Expected for all child signals to do that
-            src.addsub(src_sub, { instant: true })
-            src.addsub(src_lazysub)
+    const attachment = attachment_new_lazy({
+        connection_new: order => {
+            const src_sub = () => {
+                attachment.emit(order)
+            }
+
+            return {
+                attach: () => {
+                    src.addsub(src_sub, { order })
+
+                    if (attachment.conmap().size === 1) {
+                        src.addsub(src_lazysub, { order: false })
+                    }
+                },
+
+                detach: () => {
+                    src.rmsub(src_sub)
+
+                    if (attachment.conmap().size === 0) {
+                        src.rmsub(src_lazysub)
+                    }
+                }
+            }
         },
-        () => {
-            src.rmsub(src_sub)
-            src.rmsub(src_lazysub)
-        }
-    )
+    })
 
     return {
-        addsub(sub, config) {
-            attachment.addsub(sub, config)
-        },
-        
-        rmsub(sub) {
-            attachment.rmsub(sub)
-        },
-
-        output() {
-            return src.output()
-        }
+        rmsub: attachment.rmsub,
+        addsub: attachment.addsub,
+        output: src.output.bind(src)
     }
 }
 ```
@@ -352,7 +414,7 @@ const merged_sub = () => {
 merged_1.addsub(merged_sub)
 merged_2.addsub(merged_sub)
 
-// Batch Test should only be printed once
+// Batch Test will only be printed once
 root_1.input(5)
 ```
 
@@ -360,6 +422,11 @@ root_1.input(5)
 
 ```typescript
 import { batcher } from "@qyu/signal-core"
+
+type Batcher_Config = {
+    readonly blocked_new?: () => boolean
+    readonly order?: Signal_SubConfig_Order
+}
 
 interface Batcher {
     // emits callback in batch mode, emits queue syncronously
@@ -369,6 +436,13 @@ interface Batcher {
     // calling batch_microtask(() => signal.input(1)) will not update signal.output() immediately
     batch_microtask(callback: VoidFunction): void
     // if in batch mode - add callback to queue, else - emit callback
-    schedule(callback: VoidFunction): void
+    schedule(callback: VoidFunction, config?: Batcher_Config): void
+    // expected to be used for any effect, that changes values, on which signals rely
+    change(callback: VoidFunction): void
+
+    // the id of batched, changes every time change() is used
+    id: () => Symbol
+    // get if you are currently in a batch mode, only useful for debug
+    modecheck_batch: () => boolean
 }
 ```

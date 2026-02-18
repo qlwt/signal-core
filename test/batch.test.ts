@@ -1,4 +1,4 @@
-import { batcher, signal_new_merge, signal_new_value } from "#src/index.js"
+import { batcher, osignal_new_flat, osignal_new_pipe, signal_new_merge, signal_new_value } from "#src/index.js"
 import { test, assert } from "vitest"
 
 test("batch.shallow by outputs", () => {
@@ -113,4 +113,88 @@ test("batch_microtask.shallow by outputs", async () => {
         assert.deepEqual(outputs_b, ["b", "c"])
         assert.deepEqual(outputs_shared, [[1, "a"], [1, "b"], [2, "c"]])
     })
+})
+
+test("batch.flat by outputs", () => {
+    const outputs = new Array<any>()
+    const expectation = new Array<any>()
+
+    const root = signal_new_value<0 | 1>(0)
+    const root_a = signal_new_value("a: 0")
+    const root_b = signal_new_value("b: 0")
+    const root_f = osignal_new_flat(osignal_new_pipe(root, () => {
+        switch (root.output()) {
+            case 0:
+                return root_a
+            case 1:
+                return root_b
+        }
+    }))
+
+    root_f.addsub(() => {
+        outputs.push(root_f.output())
+    })
+
+    root.input(1)
+    expectation.push(`b: 0`)
+    root.input(0)
+    expectation.push(`a: 0`)
+
+    root_a.input(`a: 1`)
+    expectation.push(`a: 1`)
+
+    batcher.batch_sync(() => {
+        root_a.input("a: 2")
+
+        root.input(1)
+
+        outputs.push(root_f.output())
+        expectation.push("b: 0")
+    })
+
+    expectation.push(`b: 0`)
+
+    assert.deepEqual(outputs, expectation)
+})
+
+test("batch.flat.deep by outputs", () => {
+    const outputs = new Array<any>()
+    const expectation = new Array<any>()
+
+    const root = signal_new_value<0 | 1>(0)
+    const root_a = signal_new_value("a: 0")
+    const root_b = signal_new_value("b: 0")
+    const root_f = osignal_new_flat(osignal_new_pipe(root, () => {
+        switch (root.output()) {
+            case 0:
+                return root_a
+            case 1:
+                return root_b
+        }
+    }))
+
+    root_f.addsub(() => {
+        outputs.push(root_f.output())
+    })
+
+    root.input(1)
+    expectation.push(`b: 0`)
+    root.input(0)
+    expectation.push(`a: 0`)
+
+    root_a.input(`a: 1`)
+    expectation.push(`a: 1`)
+
+    batcher.batch_sync(() => {
+        root_a.input("a: 2")
+
+        root.input(1)
+
+        outputs.push(root_f.output())
+        expectation.push(`b: 0`)
+    })
+
+    expectation.push(`b: 0`)
+
+    assert.deepEqual(outputs, expectation)
 })

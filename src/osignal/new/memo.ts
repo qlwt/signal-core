@@ -1,49 +1,112 @@
+import { batcher } from "#src/const/batcher.js";
 import type { OSignal } from "#src/osignal/type/OSignal.js";
-import { attachment_new_lazy } from "#src/util/attachment/new/lazy.js";
+import type { Signal_Sub } from "#src/type/signal/Sub.js";
+
+type Cache<T> = {
+    id: Symbol
+    batcher_id: Symbol
+    id_lastcheck: Symbol
+    output: { value: T } | null
+}
 
 type Comparator<T> = {
     (a: T, b: T): boolean
 }
 
-export const osignal_new_memo = <T>(src: OSignal<T>, eq: Comparator<T> = Object.is): OSignal<T> => {
-    let cache: T
+export const osignal_new_memo = <T>(src: OSignal<T>, eq: Comparator<T> | null = Object.is): OSignal<T> => {
+    let cache: Cache<T> | null = null
 
-    const src_sub = () => {
-        const src_o = src.output()
+    const cache_get = function(): Cache<T> {
+        const batcher_id = batcher.id()
 
-        if (!eq(cache, src_o)) {
-            cache = src_o
+        if (cache) {
+            if (batcher_id !== cache.batcher_id) {
+                const src_id = src.id()
 
-            attachment.emit()
+                if (cache.id_lastcheck !== src_id) {
+
+                    if (eq) {
+                        const src_output = src.output()
+
+                        if (cache.output && eq(src_output, cache.output.value)) {
+                            cache.id_lastcheck = src_id
+                        } else {
+                            cache = {
+                                batcher_id,
+                                id: src_id,
+                                id_lastcheck: src_id,
+                                output: { value: src_output },
+                            }
+                        }
+                    } else {
+                        cache = {
+                            batcher_id,
+                            id: src_id,
+                            output: null,
+                            id_lastcheck: src_id,
+                        }
+                    }
+                }
+            }
+        } else {
+            const src_id = src.id()
+
+            if (eq) {
+                cache = {
+                    batcher_id,
+                    id: src_id,
+                    id_lastcheck: src_id,
+                    output: { value: src.output() },
+                }
+            } else {
+                cache = {
+                    batcher_id,
+                    id: src_id,
+                    output: null,
+                    id_lastcheck: src_id,
+                }
+            }
         }
+
+        return cache
     }
 
-    const attachment = attachment_new_lazy(
-        () => {
-            src.addsub(src_sub, { instant: true })
-
-            cache = src.output()
-        },
-        () => {
-            src.rmsub(src_sub)
-        }
-    )
+    const emitmap = new WeakMap<Signal_Sub, Symbol>()
 
     return {
+        rmsub: src.rmsub.bind(src),
+
+        addsub: (sub, config) => {
+            src.addsub(sub, {
+                ...config,
+
+                blocked_new: () => {
+                    const emitid = emitmap.get(sub)
+                    const cache_l = cache_get()
+
+                    if (emitid !== cache_l.id) {
+                        emitmap.set(sub, cache_l.id)
+
+                        return config?.blocked_new?.() ?? false
+                    }
+
+                    return true
+                }
+            })
+        },
+
+        id: () => {
+            return cache_get().id
+        },
+
         output() {
-            if (attachment.active()) {
-                return cache
+            const cache_l = cache_get()
+
+            if (cache_l.output === null) {
+                cache_l.output = { value: src.output() }
             }
 
-            return src.output()
-        },
-
-        rmsub(sub) {
-            attachment.rmsub(sub)
-        },
-
-        addsub(sub, config) {
-            attachment.addsub(sub, config)
+            return cache_l.output.value
         },
     }
 }

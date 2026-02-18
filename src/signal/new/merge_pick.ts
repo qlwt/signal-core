@@ -12,9 +12,7 @@ export const signal_new_merge_pick = function <Src extends Src_Generic>(src: Src
     const osignal = osignal_new_merge_pick(src)
 
     return {
-        output() {
-            return osignal.output()
-        },
+        ...osignal,
 
         input(values) {
             values.forEach((value, index) => {
@@ -25,13 +23,5 @@ export const signal_new_merge_pick = function <Src extends Src_Generic>(src: Src
                 }
             })
         },
-
-        rmsub(sub) {
-            osignal.rmsub(sub)
-        },
-
-        addsub(sub, config) {
-            osignal.addsub(sub, config)
-        }
     }
 }
