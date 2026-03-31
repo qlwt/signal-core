@@ -12,11 +12,11 @@ export type PickWrapper_Fail = {
     readonly pick: false
 }
 
-export type PickWrapper_Success_Infer<Src extends PickWrapper> = (
+export type PickWrapper_Success_Infer<Src extends PickWrapper | PickWrapper_Fail> = (
     Src extends PickWrapper_Success ? Src["value"] : never
 )
 
-export type PickWrapper_Fallback_Infer<Src extends PickWrapper> = (
+export type PickWrapper_Fallback_Infer<Src extends PickWrapper | PickWrapper_Fail> = (
     Src extends PickWrapper_Fallback ? Src["value"] : never
 )
 
