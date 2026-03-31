@@ -37,6 +37,8 @@ export * from "#src/signal/new/mergemap_pick.js"
 export * from "#src/signal/new/debug.js"
 
 export * from "#src/osignal/type/OSignal.js"
+export * from "#src/osignal/when.js"
+export * from "#src/osignal/when_pick.js"
 export * from "#src/osignal/new/memo.js"
 export * from "#src/osignal/new/fallback.js"
 export * from "#src/osignal/new/flat.js"
