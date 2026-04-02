@@ -14,7 +14,7 @@ export type Batcher = {
         * sync executes callback in batch mode 
         * then sync executes queue
     */
-    batch_sync(callback: VoidFunction): void
+    batch_sync<T>(callback: () => T): T
     /** if in batch mode - adds callback to queue, else - sync execute callback */
     schedule(callback: VoidFunction, config?: Batcher_ScheduleConfig): void
     /** expected to be used for any effect, that changes values, on which signals rely */
@@ -208,20 +208,20 @@ const batcher_new = (): Batcher => {
 
         batch_sync: effect => {
             if (batchmode) {
-                effect()
-
-                return
+                return effect()
             }
 
             batchmode = true
 
-            effect()
+            const result = effect()
 
             {
                 queue_emit()
 
                 batchmode = false
             }
+
+            return result
         },
 
         batch_microtask: effect => {
