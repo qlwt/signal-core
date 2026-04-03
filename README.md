@@ -35,7 +35,7 @@ interface OSignal<O> extends ESignal {
     output(): O
 }
 
-interface Signal<I, O> extends OSignal {
+interface Signal<I, O = I> extends OSignal {
     // input a message
     input(message: I): void
 }
@@ -202,13 +202,47 @@ const transformed_head_after = signal_listpipe.output()[0]!
 console.log(transformed_head_before === transformed_head_after)
 ```
 
+### listpipe_pick that only updates values that have changed
+
+```typescript
+const root = signal_new_value([1, 2, null, 3, null])
+
+const piped = osignal_new_listpipe_pick(root, n => {
+    if (n === null) {
+        return {
+            pick: false
+        }
+    }
+
+    return {
+        pick: true,
+
+        value: {
+            value: n
+        }
+    }
+})
+
+const piped_head_before = piped.output()[0]!
+
+signal_listpipe.input([1, null, 3, null, 5])
+
+const piped_head_after = piped.output()[0]!
+
+// transformer function will only be called for new unique members (in this case 4), old ones will be reused from cache
+// true
+console.log(transformed_head_before === transformed_head_after)
+// 3
+console.log(piped.output().length)
+```
+
 ### Prevent unnecessary updates
 
 ```typescript
 const root_1 = signal_new_value(0)
 
 // do not update if value is the same as it was
-// comparator is optional, if not provided - will update every time source is changed
+// comparator is optional and defaulted to Object.is, if not provided - will update every time source is changed
 // memo without comparator is useful when you just want to stabilise the value
 const signal_memoed = signal_new_memo(root_1, Object.is)
 
@@ -262,6 +296,59 @@ const unlisten = signal_listen({
         }
     }
 })
+```
+
+## osignal_when utility
+
+```typescript
+const root = signal_new_value(0)
+
+// will emit sub only once when root is neither null or undefined
+osignal_when(
+    sc.osignal_new_pipe(root, n => n >= 5 ? n : null),
+    root_out => {
+        console.log(root_out)
+    }
+)
+
+// nothing
+root.input(3)
+// prints 5
+root.input(5)
+// nothing
+root.input(0)
+```
+
+## osignal_when_pick utility
+
+```typescript
+const root = signal_new_value(0)
+
+// will emit sub only once when root is of acceptable value
+osignal_when_pick(
+    sc.osignal_new_pipe(root, n => {
+        if (n >= 5) {
+            return {
+                pick: true,
+                value: n
+            }
+        }
+
+        return {
+            pick: false
+        }
+    }),
+    root_out => {
+        console.log(root_out)
+    }
+)
+
+// nothing
+root.input(3)
+// prints 5
+root.input(5)
+// nothing
+root.input(0)
 ```
 
 ## You may need to create custom signals for specific needs
@@ -366,6 +453,7 @@ const osignal_new_special = function <O>(src: OSignal<O>): OSignal<O> {
     })
 
     return {
+        id: src.id.bind(src),
         rmsub: attachment.rmsub,
         addsub: attachment.addsub,
         output: src.output.bind(src)
@@ -430,7 +518,7 @@ type Batcher_Config = {
 
 interface Batcher {
     // emits callback in batch mode, emits queue syncronously
-    batch_sync(callback: VoidFunction): void
+    batch_sync<T>(callback: () => T): T
     // schedules callback to microtask (Promise.resolve().then())
     // on microtask - emit all schedulled callback in batch_sync
     // calling batch_microtask(() => signal.input(1)) will not update signal.output() immediately
