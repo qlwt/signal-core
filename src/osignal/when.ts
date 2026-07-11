@@ -14,7 +14,7 @@ export const osignal_when = function <Src extends Src_Generic>(
         const src_o = src.output()
 
         if (!(src_o === undefined || src_o === null)) {
-            action(src_o.value)
+            action(src_o)
 
             return
         }
