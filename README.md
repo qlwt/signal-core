@@ -1,536 +1,301 @@
 # @qyu/signal-core
 
-Definition and implementation of signals + some utility functions
+Definition and implementation of Signals
 
 ## Signal definition
 
-Package defines three types of signals:
-- Event Signal: does not hold any value, but allows adding and removing subsciber callbacks
-- Output Signal: extends Event Signal, but also holds value, wich is readonly
-- Normal Signal: extends Output Signal, but also allows sending messages
+- `Signal` is an `Observable State`, that supports editing state, getting saved state and listening to changes
+- `OSignal` is a readonly version of `Signal`, that does not support editing
+- `ESignal` is a stateless version of `OSignal`, that only allows observing events
+- `Signal` extends `OSignal` extends `ESignal`
+
+### Basic Usage
+
+- Use `signal_new_value` to create `Signal`
+- Use `esignal_new_manual` to create a triggerable event
 
 ```typescript
-type Signal_Sub = VoidFunction
+import * as sc from "@qyu/signal-core"
 
-type Signal_SubConfig = {
-    // default is 0
-    // execution order of subs in a batcher
-    // if false - executes instantely
-    order?: number | false
-    // called before the execution of a sub to determain wether it should be executed
-    blocked_new?: () => boolean
+const state = sc.signal_new_value(0)
+
+// subscriptions accept no parameters and return no value
+const sub = function () {
+    // you retrieve the state inside of the sub instead of recieving it as a parameter
+    console.log(state.output())
 }
 
-interface ESignal {
-    // id of a signal, expected to change every time the value changes
-    id(): Symbol
-    // remove subscriber from signal
-    rmsub(sub: Signal_Sub): void
-    // add subscriber to signal
-    addsub(sub: Signal_Sub, config?: Signal_SubConfig): void
-}
+state.addsub(sub)
 
-interface OSignal<O> extends ESignal {
-    // get signal value
-    output(): O
-}
+// does not execute sub on attach, so you do it youself
+// prints "0"
+sub()
 
-interface Signal<I, O = I> extends OSignal {
-    // input a message
-    input(message: I): void
-}
+// prints "1"
+state.input(1)
+
+state.rmsub(sub)
 ```
 
-## Normally your root signal will be created with signal_new_value
+### Improving Experience
+
+Using `signal_listen` or `signal_listen_controled` simplifies the process
 
 ```typescript
-const root = signal_new_value(0)
+import * as sc from "@qyu/signal-core"
 
-const root_sub = () => {
-    console.log(root.output())
-}
+const state = sc.signal_new_value(0)
 
-root.addsub(root_sub)
+{
+    // prints "Update: 0"
+    const cleanup = sc.signal_listen({
+        target: state,
+        config: { emit: true, },
 
-// prints 10
-root.input(10)
+        listener: () => {
+            const state_o = state.output()
 
-// prints 20
-root.input(20)
+            console.log(`Update: ${state_o}`)
 
-root.rmsub(root_sub)
-```
-
-## Another common scenario is using esignal_new_manual
-
-```typescript
-const [esignal, esignal_emit] = esignal_new_manual()
-
-esignal.addsub(() => {
-    console.log("Event")
-})
-
-// prints Event
-esignal_emit()
-```
-
-## Package also provides some utility functions to transform signals
-
-### Fallback for signal value
-
-```typescript
-// signal of number | null
-const root_1 = signal_new_value(Math.random() > 0.5 ? null : 0)
-
-// signal of number
-const signal_fallback = signal_new_fallback(root_1, () => 0)
-```
-
-### Merge Signals
-
-```typescript
-const root_1 = signal_new_value(0)
-const root_2 = signal_new_value(0)
-const root_3 = signal_new_value(0)
-
-// signal of [number, number, number, null, undefined]
-const signal_merged = signal_new_merge([root_1, root_2, root_3, null, undefined] as const)
-// signal of [number, "HELLOWORLD"]
-const signal_merged_pick = signal_new_merge_pick([{ pick: true, value: root_1 }, { pick: false, value: "HELLO WORLD" }] as const)
-```
-
-### Merge Map of Signals
-
-```typescript
-const root_1 = signal_new_value(0)
-const root_2 = signal_new_value(0)
-const root_3 = signal_new_value(0)
-
-// signal of { root_1: number, root_2: number, root_3: number, root_4: null, root_5: undefined }
-const signal_mergedmap = signal_new_mergemap({
-    root_1,
-    root_2,
-    root_3,
-    root_4: null,
-    root_5: undefined 
-})
-// signal of { root_1: number, root_2: "HELLOWORLD" }
-const signal_mergedmap = signal_new_mergemap({
-    root_1: {
-        pick: true,
-        value: root_1 
-    },
-    root_2: {
-        pick: false,
-        value: "HELLOWORLD" 
-    } 
-})
-```
-
-### Transform Signal
-
-```typescript
-const root_1 = signal_new_value(0)
-const root_2 = signal_new_value(0)
-const root_3 = signal_new_value(0)
-
-// transform output of signal
-// also has variants of pipei to transform input and pipe to transform both
-// signal of undefined or signal of number
-const signal_opipe = signal_new_pipeo(root_1, d => {
-    if (d > 50) {
-        return root_2
-    }
-
-    if (d < 0) {
-        return root_3
-    }
-
-    return undefined
-})
-```
-
-### Flat nested Signals
-
-```typescript
-const root_1 = signal_new_value(0)
-const root_2 = signal_new_value(0)
-
-const signal_opipe = signal_new_pipeo(root_1, d => {
-    if (d > 100) {
-        return undefined
-    }
-
-    return root_2
-})
-
-const signal_opipe_pick = signal_new_pipeo(root_1, d => {
-    if (d > 100) {
-        return {
-            pick: false,
-            value: "HELLOWORLD"
-        }
-    }
-
-    return {
-        pick: true,
-        value: root_2
-    }
-})
-
-// signal of number or undefined, will update based on current target, input will be redirected to current target
-const signal_flat = signal_new_flat(signal_opipe)
-// this one will be signal of number | "HELLOWORLD"
-const signal_flat_pick = signal_new_flat_pick(signal_opipe_pick)
-```
-
-### List pipe that only updates values that have changed
-
-```typescript
-const root = signal_new_value([0, 1, 2, 3])
-
-const signal_listpipe = signal_new_listpipe(root, n => ({ value: n }))
-
-const transformed_head_before = signal_listpipe.output()[0]!
-
-signal_listpipe.input([0, 1, 2, 3, 4])
-
-const transformed_head_after = signal_listpipe.output()[0]!
-
-// transformer function will only be called for new unique members (in this case 4), old ones will be reused from cache
-// true
-console.log(transformed_head_before === transformed_head_after)
-```
-
-### listpipe_pick that only updates values that have changed
-
-```typescript
-const root = signal_new_value([1, 2, null, 3, null])
-
-const piped = osignal_new_listpipe_pick(root, n => {
-    if (n === null) {
-        return {
-            pick: false
-        }
-    }
-
-    return {
-        pick: true,
-
-        value: {
-            value: n
-        }
-    }
-})
-
-const piped_head_before = piped.output()[0]!
-
-signal_listpipe.input([1, null, 3, null, 5])
-
-const piped_head_after = piped.output()[0]!
-
-// transformer function will only be called for new unique members (in this case 4), old ones will be reused from cache
-// true
-console.log(transformed_head_before === transformed_head_after)
-// 3
-console.log(piped.output().length)
-```
-
-### Prevent unnecessary updates
-
-```typescript
-const root_1 = signal_new_value(0)
-
-// do not update if value is the same as it was
-// comparator is optional and defaulted to Object.is, if not provided - will update every time source is changed
-// memo without comparator is useful when you just want to stabilise the value
-const signal_memoed = signal_new_memo(root_1, Object.is)
-
-// normally would always provide diferent object
-const piped = osignal_new_pipe(root_1, value => {
-    return {
-        value
-    }
-})
-
-// usage of memo without comparator
-// will still trigger every time root_1 changes, but will return stable output between changes
-const piped_memoed = osignal_new_memo(piped)
-
-// false
-console.log(piped.output() === piped.output())
-// true
-console.log(piped_memoed.output() === piped_memoed.output())
-```
-
-### Osignal and ESignal also have their own transformers
-
-```typescript
-const root_1 = signal_new_value(0)
-const root_2 = signal_new_value(0)
-const root_3 = signal_new_value(0)
-
-// osignal and esignal also have those function variants where it makes sense
-const osignal_pipe = osignal_new_pipe(root_1, d => d * 2)
-```
-
-## In some cases you would need signal_listen utility function
-
-```typescript
-const root = signal_new_value(0)
-
-const unlisten = signal_listen({
-    target: root,
-
-    // optional
-    config: {
-        // false by default
-        emit: true
-    },
-
-    listener: target => {
-        console.log("effect", target.output())
-
-        return () => {
-            console.log("cleanup", target.output())
-        }
-    }
-})
-```
-
-## osignal_when utility
-
-```typescript
-const root = signal_new_value(0)
-
-// will emit sub only once when root is neither null or undefined
-osignal_when(
-    sc.osignal_new_pipe(root, n => n >= 5 ? n : null),
-    root_out => {
-        console.log(root_out)
-    }
-)
-
-// nothing
-root.input(3)
-// prints 5
-root.input(5)
-// nothing
-root.input(0)
-```
-
-## osignal_when_pick utility
-
-```typescript
-const root = signal_new_value(0)
-
-// will emit sub only once when root is of acceptable value
-osignal_when_pick(
-    sc.osignal_new_pipe(root, n => {
-        if (n >= 5) {
-            return {
-                pick: true,
-                value: n
-            }
-        }
-
-        return {
-            pick: false
-        }
-    }),
-    root_out => {
-        console.log(root_out)
-    }
-)
-
-// nothing
-root.input(3)
-// prints 5
-root.input(5)
-// nothing
-root.input(0)
-```
-
-## You may need to create custom signals for specific needs
-
-### Package exports some API for doing so
-
-```typescript
-const emitter = emitter_new()
-// will attach with provided function when there are subs listening
-// will deattach when there is none
-const attachment = attachment_new_lazy({
-    connection_new: (order) => {
-        let id: number | null = null
-
-        const emit = () => {
-            emitter.emit(order)
-        }
-
-        return {
-            attach: () => {
-                console.log("Attachment activation")
-
-                id = setInterval(() => {
-                    signal_sub_emit(emit, { order: false })
-                }, 1000)
-            },
-            detach: () => {
-                console.log("Attachment cleanup")
-
-                if (id !== null) {
-                    cancelInterval(id)
-                }
-            }
-        }
-    }
-})
-
-interface Emitter {
-    emit_all(): void
-    emit(order: Signal_SubConfig_Order): void
-
-    // index of subs to the order
-    idxmap(): Map<Signal_Sub, Signal_SubConfig_Order>
-    // index of order to the index of subs
-    ordermap(): Map<Signal_SubConfig_Order, Map<Signal_Sub, Signal_SubConfig>>
-
-    // returns order if it have been emptied (should detach)
-    rmsub(sub: Signal_Sub): Signal_SubConfig_Order | null
-    // returns order if it have been created (should attach)
-    addsub(sub: Signal_Sub, config?: Signal_SubConfig): Signal_SubConfig_Order | null
-}
-
-interface AttachmentLazy {
-    emit_all(): void
-    emit(order: Signal_SubConfig_Order): void
-
-    conmap(): Map<Signal_SubConfig_Order, AttachmentLazy_Connection>
-
-    // get if any of the orders active
-    active_any(): boolean
-    // get if attachment of given order is active
-    active(order: Signal_SubConfig_Order): boolean
-    // get list of all currently attached orders
-    active_list(): Signal_SubConfig_Order[] 
-
-    rmsub(sub: Signal_Sub): void
-    addsub(sub: Signal_Sub, config?: Signal_SubConfig): void
-}
-```
-
-```typescript
-// special signal that adds lazy sub to source
-const osignal_new_special = function <O>(src: OSignal<O>): OSignal<O> {
-    const src_lazysub = () => {
-        console.log("lazysub")
-    }
-
-    const attachment = attachment_new_lazy({
-        connection_new: order => {
-            const src_sub = () => {
-                attachment.emit(order)
-            }
-
-            return {
-                attach: () => {
-                    src.addsub(src_sub, { order })
-
-                    if (attachment.conmap().size === 1) {
-                        src.addsub(src_lazysub, { order: false })
-                    }
-                },
-
-                detach: () => {
-                    src.rmsub(src_sub)
-
-                    if (attachment.conmap().size === 0) {
-                        src.rmsub(src_lazysub)
-                    }
-                }
+            return () => {
+                console.log(`Cleanup: ${state_o}`)
             }
         },
     })
 
-    return {
-        id: src.id.bind(src),
-        rmsub: attachment.rmsub,
-        addsub: attachment.addsub,
-        output: src.output.bind(src)
-    }
+    // prints "Cleanup: 0", "Update: 1"
+    state.input(1)
+
+    // prints "Cleanup: 1"
+    cleanup()
 }
-```
 
-### Also some debug api is exposed to test things
+{
+    // in case you need more control over the cleanup
+    // prints "Update: 0"
+    const controls = sc.signal_listen_controled({
+        target: state,
+        config: { emit: true, },
 
-```typescript
-const root = signal_new_value()
+        listener: () => {
+            const state_o = state.output()
 
-// will print on actions, has some additional functions that expose internal state
-const debug = signal_new_debug(root, {
-    // will be shown at console
-    name: "root:debug",
+            console.log(`Update: ${state_o}`)
 
-    print: {
-        // print state with actions
-        state: true,
-        // print on action unless marked as false
-        actions_fallback: true,
+            return {
+                payload: {
+                    value: state_o,
+                },
 
-        // print on action
-        actions: {
-            input: false,
-            output: false,
+                cleanup_update: () => {
+                    console.log(`Cleanup: ${state_o}`)
+                },
+            }
         },
-    }
+    })
+
+    // prints "Cleanup: 0", "Update: 1"
+    state.input(1)
+
+    // prints { value: 1 }
+    console.log(controls.payload)
+
+    // does not execute update-level cleanup, just detaches the listener
+    controls.cleanup_target()
+
+    // prints "Cleanup: 1"
+    controls.cleanup_update?.()
+}
+```
+
+## Transforming the State
+
+- Naming Convention for all `Signal Constructors` is `{signal_kind}_new_{action_kind}`
+- All `Transformer Signals` are lazy, meaning they do nothing until you add subscriptions
+
+```typescript
+import * as sc from "@qyu/signal-core"
+
+const width = sc.signal_new_value(50)
+const height = sc.signal_new_value(100)
+
+// osignal_new accept Signal, as Signal extends OSignal
+const area = sc.osignal_new_pipe(
+    sc.osignal_new_merge([width, height] as const),
+    ([width_o, height_o]) => {
+        return width_o * height_o
+    },
+)
+
+// prints "5000"
+sc.signal_listen({
+    target: area,
+    config: { emit: true, },
+
+    listener: () => {
+        console.log(area.output()) 
+    }, 
 })
+
+// prints "10000"
+width.input(100)
+
+// prints "5000"
+height.input(50)
 ```
 
-## Updates are batched to prevent unnecessary calls
+## List of Core Transformers
+
+- Most transformers are implemented for all kinds of `Signals`
+- `pipe` for `OSignal` transforms output, `pipe`, `pipei` and `pipeo` for `Signal` transform input and output
+- `merge` merges `Signals` of the same kind together
+- `mergemap` merges an Object of like-kinded `Signals` together
+- `flat` transforms `OSignal<ChildSignal>` to just `ChildSignal`
+- `memo` allows memorizing output and removing unnecessary subscription calls
+- `listpipe` transforms a list, caching each values so it is not recalculated again later
+- `merge_pick`, `mergemap_pick` uses conditional types to determine if value is a `Signal` or static
+- `flat_pick` uses conditional type to determine wether it should flatten the output or leave it as is
+- `listpipe_pick` uses conditional type to determine wether mapped value should be included in the resulting list
 
 ```typescript
-const root_1 = signal_new_value(0)
-const root_2 = signal_new_value(0)
+import * as sc from "@qyu/signal-core"
 
-const merged_1 = signal_new_merge([root_1, root_2] as const)
-const merged_2 = signal_new_merge([root_1, merged_1] as const)
+const width = sc.signal_new_value(50)
+const height = sc.signal_new_value(100)
 
-const merged_sub = () => {
-    console.log("Batch Test")
-}
+const dimension_kind = sc.signal_new_value<"width" | "height">("width")
 
-merged_1.addsub(merged_sub)
-merged_2.addsub(merged_sub)
+// OSignal<Signal<number>>
+const dimension_raw = sc.osignal_new_pipe(dimension_kind, kind_o => {
+    if (kind_o === "width") {
+        return width
+    }
 
-// Batch Test will only be printed once
-root_1.input(5)
+    return height
+})
+
+// OSignal<number>
+const dimension = sc.osignal_new_flat(dimension_raw)
+
+dimension.addsub(() => {
+    console.log(dimension.output())
+})
+
+// prints "50"
+console.log(dimension.output())
+
+// prints "100"
+dimension_kind.input("height")
+
+// prints "150"
+height.input(150)
 ```
 
-## Batcher itself is accessable through batcher import
+```typescript
+import * as sc from "@qyu/signal-core"
+
+const width = sc.signal_new_value(50)
+const height = sc.signal_new_value(100)
+
+const dimension_kind = sc.signal_new_value<"width" | "height" | "none">("width")
+
+const dimension_raw = sc.osignal_new_pipe(dimension_kind, kind_o => {
+    if (kind_o === "width") {
+        return {
+            pick: true,
+            value: width,
+        } as const
+    }
+
+    if (kind_o === "height") {
+        return {
+            pick: true,
+            value: height,
+        } as const
+    }
+
+    return {
+        pick: false,
+        value: null
+    } as const
+})
+
+// OSignal<number | null>
+const dimension = sc.osignal_new_flat_pick(dimension_raw)
+
+dimension.addsub(() => {
+    console.log(dimension.output())
+})
+
+// prints "50"
+console.log(dimension.output())
+
+// prints "100"
+dimension_kind.input("height")
+
+// prints "150"
+height.input(150)
+
+// prints "null"
+dimension_kind.input("none")
+```
+
+## Memorizing
+
+- `memo` accepts comparator to determine if value have changed, default comparator is `Object.is`
+- Providing `null` prevent value from beeing recalculated when dependencies did not change
+- When providing `null`, subs will stil fire on every change
 
 ```typescript
-import { batcher } from "@qyu/signal-core"
+import * as sc from "@qyu/signal-core"
 
-type Batcher_Config = {
-    readonly blocked_new?: () => boolean
-    readonly order?: Signal_SubConfig_Order
-}
+const state = sc.signal_new_value(0)
 
-interface Batcher {
-    // emits callback in batch mode, emits queue syncronously
-    batch_sync<T>(callback: () => T): T
-    // schedules callback to microtask (Promise.resolve().then())
-    // on microtask - emit all schedulled callback in batch_sync
-    // calling batch_microtask(() => signal.input(1)) will not update signal.output() immediately
-    batch_microtask(callback: VoidFunction): void
-    // if in batch mode - add callback to queue, else - emit callback
-    schedule(callback: VoidFunction, config?: Batcher_Config): void
-    // expected to be used for any effect, that changes values, on which signals rely
-    change(callback: VoidFunction): void
+const data = sc.osignal_new_pipe(state, state_o => {
+    return Array.from({ length: state_o, }, (_, i) => i)
+})
 
-    // the id of batched, changes every time change() is used
-    id: () => Symbol
-    // get if you are currently in a batch mode, only useful for debug
-    modecheck_batch: () => boolean
-}
+// here data is changing each time state changes, so comparing it a waste of CPU
+const data_memoed = sc.osignal_new_memo(data, null)
+
+// true
+console.log(data_memoed.output() === data_memoed.output())
+```
+
+## Batching
+
+- `batcher` is exposed for batching purposes
+- `.batch_sync(cb)` executes `cb`, will defer sub-calls until the end of batch-cycle and eliminate repeated calls
+- `.batch_microtask(cb)` will defer execution of `cb` until next microtask and batch all scheduled callbacks
+
+```typescript
+import * as sc from "@qyu/signal-core"
+
+const state = sc.signal_new_value(0)
+
+sc.signal_listen({
+    target: state,
+    listener: () => console.log(state.output()), 
+})
+
+// prints "1"
+state.input(1)
+// prints "2"
+state.input(2)
+
+// prints "4" after callback
+sc.batcher.batch_sync(() => {
+    state.input(3)
+    state.input(4)
+})
+
+// prints "6" as-soon-as-possible after syncronous code execution is finished
+sc.batcher.batch_microtask(() => {
+    state.input(5)
+    state.input(6)
+})
+
+// prints "4"
+// previous callback is not yet executed, because it is asynchronous
+console.log(state.output())
 ```
