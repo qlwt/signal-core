@@ -19,6 +19,7 @@ export * from "#src/util/attachment/new/lazy.js"
 
 export * from "#src/signal/type/Signal.js"
 export * from "#src/signal/listen.js"
+export * from "#src/signal/listen_controlled.js"
 export * from "#src/signal/sub/emit.js"
 export * from "#src/signal/new/memo.js"
 export * from "#src/signal/new/pipeo.js"
